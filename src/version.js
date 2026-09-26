@@ -177,20 +177,32 @@ export function bumpVersion(versionStr, type = 'patch', options = {}) {
   const { keepPrefix = true, prefix: forcedPrefix } = options;
   const prefix = forcedPrefix !== undefined ? forcedPrefix : (keepPrefix ? parsed.prefix : '');
 
-  let { major, minor, patch } = parsed;
+  let { major, minor, patch, prerelease } = parsed;
 
   switch (type.toLowerCase()) {
     case 'major':
-      major += 1;
-      minor = 0;
-      patch = 0;
+      if (prerelease && minor === 0 && patch === 0) {
+        // Releasing a major prerelease (e.g. 2.0.0-beta → 2.0.0)
+      } else {
+        major += 1;
+        minor = 0;
+        patch = 0;
+      }
       break;
     case 'minor':
-      minor += 1;
-      patch = 0;
+      if (prerelease && patch === 0) {
+        // Releasing a minor prerelease (e.g. 1.2.0-rc.1 → 1.2.0)
+      } else {
+        minor += 1;
+        patch = 0;
+      }
       break;
     case 'patch':
-      patch += 1;
+      if (prerelease) {
+        // Releasing a patch prerelease (e.g. 1.2.3-beta.1 → 1.2.3)
+      } else {
+        patch += 1;
+      }
       break;
     default:
       throw new Error(`Invalid bump type: "${type}". Allowed values are: 'major', 'minor', 'patch'.`);

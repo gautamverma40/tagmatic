@@ -162,6 +162,27 @@ describe('Version Utilities', () => {
       assert.equal(bumpVersion('v1.5.9', 'major'), 'v2.0.0');
     });
 
+    it('should release prerelease on patch bump (drop prerelease)', () => {
+      assert.equal(bumpVersion('v1.2.3-beta.1', 'patch'), 'v1.2.3');
+      assert.equal(bumpVersion('v1.0.0-rc.1', 'patch'), 'v1.0.0');
+    });
+
+    it('should release prerelease on minor bump when patch is 0', () => {
+      assert.equal(bumpVersion('v1.2.0-rc.1', 'minor'), 'v1.2.0');
+    });
+
+    it('should bump minor normally on prerelease when patch > 0', () => {
+      assert.equal(bumpVersion('v1.2.3-beta.1', 'minor'), 'v1.3.0');
+    });
+
+    it('should release prerelease on major bump when minor and patch are 0', () => {
+      assert.equal(bumpVersion('v2.0.0-beta.1', 'major'), 'v2.0.0');
+    });
+
+    it('should bump major normally on prerelease when minor or patch > 0', () => {
+      assert.equal(bumpVersion('v1.2.3-beta.1', 'major'), 'v2.0.0');
+    });
+
     it('should preserve existing custom prefix', () => {
       assert.equal(bumpVersion('release-1.2.0', 'minor'), 'release-1.3.0');
     });
