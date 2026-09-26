@@ -1,7 +1,7 @@
 {
   "name": "tagmatic",
   "version": "1.0.0",
-  "description": "Automated Git tag generator and SemVer release management tool",
+  "description": "Multi-source automated SemVer release management and tagging tool for Git repositories, container registries, and CI/CD pipelines",
   "main": "src/tagmatic.js",
   "exports": {
     ".": "./src/tagmatic.js"
@@ -31,7 +31,11 @@
     "version",
     "release",
     "generator",
-    "cli"
+    "cli",
+    "docker",
+    "gar",
+    "gcp",
+    "artifact-registry"
   ],
   "author": "Gautam Verma <gautamverma40@gmail.com>",
   "license": "MIT",

@@ -28,30 +28,40 @@ function getPackageVersion() {
  */
 export function printHelp() {
   console.log(`
-Tagmatic - Automated Git Tag & Release Tool
+Tagmatic - Automated Git & Google Artifact Registry Release Tool
 
 Usage:
   tagmatic [options]
+  tagmatic [image] [type]
 
 Options:
+  -s, --source <source>    Tag source: git | gar (default: "git")
+      --image <name>       Docker image repository in Google Artifact Registry
+      --limit <number>     Max images to inspect in GAR (default: 25)
   -t, --type <type>        Bump type: patch | minor | major (default: "patch")
   -p, --prefix <prefix>    Tag prefix string (default: "v")
       --no-prefix          Disable tag prefix (equivalent to --prefix "")
   -m, --message <msg>      Custom annotation message for the tag
+  -q, --quiet              Print only the computed tag string (ideal for CI/CD)
   -d, --dry-run            Simulate tag calculation without creating or pushing
       --push               Push the newly created tag to remote repository
   -r, --remote <name>      Git remote name when pushing (default: "origin")
       --allow-dirty        Allow tag creation with uncommitted working changes
-  -i, --initial <version>  Initial version when no prior tag exists (default: "v0.1.0")
+  -i, --initial <version>  Initial version when no prior tag exists
   -v, --version            Display current CLI version
   -h, --help               Show this help message
 
 Examples:
+  # Git tagging:
   $ tagmatic
   $ tagmatic --type minor
-  $ tagmatic --type major --message "Major release 2.0.0"
   $ tagmatic --dry-run
   $ tagmatic --push
+
+  # Google Artifact Registry (GAR) tagging:
+  $ tagmatic --source gar --image us-east4-docker.pkg.dev/my-proj/repo/app
+  $ tagmatic us-east4-docker.pkg.dev/my-proj/repo/app minor
+  $ tagmatic --image us-east4-docker.pkg.dev/my-proj/repo/app --quiet
 `);
 }
 
@@ -62,6 +72,9 @@ Examples:
  */
 export function parseArgs(argv = []) {
   const options = {
+    source: 'git',
+    image: '',
+    limit: 25,
     type: 'patch',
     prefix: 'v',
     initialVersion: 'v0.1.0',
@@ -70,9 +83,13 @@ export function parseArgs(argv = []) {
     push: false,
     remote: 'origin',
     allowDirty: false,
+    quiet: false,
     help: false,
     version: false
   };
+
+  let sourceExplicitlySet = false;
+  let initialExplicitlySet = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -81,6 +98,8 @@ export function parseArgs(argv = []) {
       options.help = true;
     } else if (arg === '-v' || arg === '--version') {
       options.version = true;
+    } else if (arg === '-q' || arg === '--quiet' || arg === '--silent') {
+      options.quiet = true;
     } else if (arg === '-d' || arg === '--dry-run') {
       options.dryRun = true;
     } else if (arg === '--push') {
@@ -89,6 +108,22 @@ export function parseArgs(argv = []) {
       options.allowDirty = true;
     } else if (arg === '--no-prefix') {
       options.prefix = '';
+    } else if (arg === '-s' || arg === '--source') {
+      if (i + 1 < argv.length) options.source = argv[++i].toLowerCase();
+      sourceExplicitlySet = true;
+    } else if (arg.startsWith('--source=')) {
+      options.source = arg.slice(arg.indexOf('=') + 1).toLowerCase();
+      sourceExplicitlySet = true;
+    } else if (arg === '--image') {
+      if (i + 1 < argv.length) options.image = argv[++i];
+      if (!sourceExplicitlySet) options.source = 'gar';
+    } else if (arg.startsWith('--image=')) {
+      options.image = arg.slice(arg.indexOf('=') + 1);
+      if (!sourceExplicitlySet) options.source = 'gar';
+    } else if (arg === '--limit') {
+      if (i + 1 < argv.length) options.limit = parseInt(argv[++i], 10) || 25;
+    } else if (arg.startsWith('--limit=')) {
+      options.limit = parseInt(arg.slice(arg.indexOf('=') + 1), 10) || 25;
     } else if (arg === '-t' || arg === '--type') {
       if (i + 1 < argv.length) options.type = argv[++i];
     } else if (arg.startsWith('--type=')) {
@@ -107,9 +142,23 @@ export function parseArgs(argv = []) {
       options.remote = arg.slice(arg.indexOf('=') + 1);
     } else if (arg === '-i' || arg === '--initial') {
       if (i + 1 < argv.length) options.initialVersion = argv[++i];
+      initialExplicitlySet = true;
     } else if (arg.startsWith('--initial=')) {
       options.initialVersion = arg.slice(arg.indexOf('=') + 1);
+      initialExplicitlySet = true;
+    } else if (!arg.startsWith('-')) {
+      // Positional argument support (<image> [type])
+      if (!options.image && (arg.includes('/') || arg.includes('.'))) {
+        options.image = arg;
+        if (!sourceExplicitlySet) options.source = 'gar';
+      } else if (['patch', 'minor', 'major'].includes(arg.toLowerCase())) {
+        options.type = arg.toLowerCase();
+      }
     }
+  }
+
+  if (options.source === 'gar' && !initialExplicitlySet) {
+    options.initialVersion = '0.0.1';
   }
 
   return options;
@@ -133,11 +182,29 @@ export async function runCLI(argv = process.argv.slice(2)) {
   }
 
   try {
-    console.log('\n🏷️  Tagmatic');
-    console.log('----------------------------------------');
-
     const result = await generateTag(options);
 
+    if (options.quiet) {
+      console.log(result.nextTag);
+      return;
+    }
+
+    if (result.source === 'gar') {
+      console.log('\n🏷️  Tagmatic [Google Artifact Registry]');
+      console.log('----------------------------------------');
+      console.log(`📦 Image:        ${result.image}`);
+      console.log(`🔍 Current Tag:  ${result.currentTag || '(none)'}`);
+      console.log(`✨ Next Tag:     ${result.nextTag} [${options.type.toUpperCase()}]`);
+      if (result.isDryRun) {
+        console.log('\n⚠️  DRY RUN: Tag calculated.');
+      }
+      console.log('----------------------------------------\n');
+      return;
+    }
+
+    // Git Output
+    console.log('\n🏷️  Tagmatic');
+    console.log('----------------------------------------');
     console.log(`📍 Branch:       ${result.branch}`);
     console.log(`🔍 Current Tag:  ${result.currentTag || '(none)'}`);
     console.log(`✨ Next Tag:     ${result.nextTag} [${options.type.toUpperCase()}]`);

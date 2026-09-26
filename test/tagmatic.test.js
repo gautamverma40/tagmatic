@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { generateTag } from '../src/tagmatic.js';
+import { generateTag, registerProvider, getRegisteredProviders } from '../src/tagmatic.js';
 import { parseArgs, printHelp } from '../src/cli.js';
 
 describe('Tagmatic Core Module', () => {
@@ -23,6 +23,27 @@ describe('Tagmatic Core Module', () => {
 
   it('should export printHelp from cli', () => {
     assert.equal(typeof printHelp, 'function');
+  });
+
+  it('should throw for unsupported source', async () => {
+    await assert.rejects(
+      async () => {
+        await generateTag({ source: 'unsupported' });
+      },
+      /Unsupported source: "unsupported"/
+    );
+  });
+
+  it('should support registering custom source providers', async () => {
+    registerProvider('mock', {
+      defaultInitial: '0.0.1',
+      getLatestTag: () => 'mock-1.0.0'
+    });
+    assert.ok(getRegisteredProviders().includes('mock'));
+    const res = await generateTag({ source: 'mock', type: 'minor' });
+    assert.equal(res.source, 'mock');
+    assert.equal(res.currentTag, 'mock-1.0.0');
+    assert.equal(res.nextTag, 'mock-1.1.0');
   });
 });
 
