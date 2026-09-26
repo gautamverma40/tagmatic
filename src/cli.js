@@ -42,6 +42,7 @@ Options:
   -p, --prefix <prefix>    Tag prefix string (default: "v")
       --no-prefix          Disable tag prefix (equivalent to --prefix "")
   -m, --message <msg>      Custom annotation message for the tag
+      --sync [target]      Sync version to manifests (all, or target: npm, maven, gradle, python, etc.)
   -q, --quiet              Print only the computed tag string (ideal for CI/CD)
   -d, --dry-run            Simulate tag calculation without creating or pushing
       --push               Push the newly created tag to remote repository
@@ -55,6 +56,8 @@ Examples:
   # Git tagging:
   $ tagmatic
   $ tagmatic --type minor
+  $ tagmatic --type minor --sync
+  $ tagmatic --type minor --sync=npm
   $ tagmatic --dry-run
   $ tagmatic --push
 
@@ -81,6 +84,7 @@ export function parseArgs(argv = []) {
     message: '',
     dryRun: false,
     push: false,
+    sync: false,
     remote: 'origin',
     allowDirty: false,
     quiet: false,
@@ -104,6 +108,15 @@ export function parseArgs(argv = []) {
       options.dryRun = true;
     } else if (arg === '--push') {
       options.push = true;
+    } else if (arg === '--sync') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        options.sync = argv[++i];
+      } else {
+        options.sync = true;
+      }
+    } else if (arg.startsWith('--sync=')) {
+      const val = arg.slice(arg.indexOf('=') + 1).trim();
+      options.sync = val || true;
     } else if (arg === '--allow-dirty') {
       options.allowDirty = true;
     } else if (arg === '--no-prefix') {
@@ -213,14 +226,25 @@ export async function runCLI(argv = process.argv.slice(2)) {
     console.log(`✨ Next Tag:     ${result.nextTag} [${options.type.toUpperCase()}]`);
     console.log(`💬 Message:      ${result.message}`);
 
+    if (result.manifests && result.manifests.length > 0) {
+      console.log('\n📄 Manifests:');
+      for (const m of result.manifests) {
+        console.log(`   - ${m.file} (${m.oldVersion} → ${m.newVersion})`);
+      }
+    }
+
     if (result.dryRun) {
       console.log('\n⚠️  DRY RUN: Tag was calculated but NOT created or pushed.');
     } else {
+      if (result.manifestCommit) {
+        console.log(`\n📝 Manifests committed: "${result.manifestCommit}"`);
+      }
       if (result.created) {
         console.log(`\n✅ Tag "${result.nextTag}" created successfully.`);
       }
       if (result.pushed) {
-        console.log(`🚀 Tag "${result.nextTag}" pushed to "${options.remote}".`);
+        const dest = result.manifestCommit && result.branch ? `tag "${result.nextTag}" and branch "${result.branch}"` : `Tag "${result.nextTag}"`;
+        console.log(`🚀 ${dest} pushed to "${options.remote}".`);
       }
     }
 

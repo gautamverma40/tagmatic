@@ -9,10 +9,13 @@ import {
   getLatestTag,
   getCommitsSince,
   createTag,
-  pushTag
+  pushTag,
+  commitFiles,
+  pushBranch
 } from './git.js';
 import { getLatestGARTag } from './gar.js';
-import { bumpVersion, formatTag, isValidVersion } from './version.js';
+import { bumpVersion, formatTag, isValidVersion, parseSemver } from './version.js';
+import { syncManifests } from './manifest.js';
 
 /**
  * @typedef {Object} TagmaticOptions
@@ -25,6 +28,7 @@ import { bumpVersion, formatTag, isValidVersion } from './version.js';
  * @property {string} [message] - Tag annotation message
  * @property {boolean} [dryRun=false] - Preview next tag without writing or pushing
  * @property {boolean} [push=false] - Push generated tag to git remote
+ * @property {boolean} [sync=false] - Sync version to project manifest files (package.json, pyproject.toml, etc.)
  * @property {string} [remote='origin'] - Git remote name
  * @property {boolean} [allowDirty=false] - Allow tag generation even if git tree has changes
  * @property {string} [cwd=process.cwd()] - Target directory
@@ -49,22 +53,43 @@ const providers = {
     afterBump(opts, nextTag, tagMessage) {
       let created = false;
       let pushed = false;
+      let syncedManifests = [];
+      let manifestCommit = null;
+
+      const branch = getCurrentBranch(opts.cwd);
+
+      if (opts.sync) {
+        const cleanVersion = formatTag(nextTag, '');
+        const filter = typeof opts.sync === 'string' ? opts.sync : null;
+        const syncResult = syncManifests(cleanVersion, opts.cwd, opts.dryRun, filter);
+        syncedManifests = syncResult.synced;
+
+        if (!opts.dryRun && syncResult.files.length > 0) {
+          manifestCommit = `chore(release): ${nextTag}`;
+          commitFiles(syncResult.files, manifestCommit, opts.cwd);
+        }
+      }
 
       if (!opts.dryRun) {
         createTag(nextTag, tagMessage, opts.cwd);
         created = true;
 
         if (opts.push) {
+          if (manifestCommit && branch) {
+            pushBranch(branch, opts.remote, opts.cwd);
+          }
           pushTag(nextTag, opts.remote, opts.cwd);
           pushed = true;
         }
       }
 
       return {
-        branch: getCurrentBranch(opts.cwd),
+        branch,
         created,
         pushed,
-        commits: getCommitsSince(opts.currentTag, 10, opts.cwd)
+        commits: getCommitsSince(opts.currentTag, 10, opts.cwd),
+        manifests: syncedManifests,
+        manifestCommit
       };
     }
   },
@@ -78,12 +103,21 @@ const providers = {
     getLatestTag(opts) {
       return getLatestGARTag(opts.image, opts.prefix, opts.limit);
     },
-    afterBump() {
+    afterBump(opts, nextTag) {
+      let syncedManifests = [];
+      if (opts.sync) {
+        const cleanVersion = formatTag(nextTag, '');
+        const filter = typeof opts.sync === 'string' ? opts.sync : null;
+        const syncResult = syncManifests(cleanVersion, opts.cwd, opts.dryRun, filter);
+        syncedManifests = syncResult.synced;
+      }
       return {
         branch: null,
         created: false,
         pushed: false,
-        commits: []
+        commits: [],
+        manifests: syncedManifests,
+        manifestCommit: null
       };
     }
   }
@@ -142,6 +176,7 @@ export async function generateTag(options = {}) {
     message,
     dryRun = false,
     push = false,
+    sync = false,
     remote = 'origin',
     allowDirty = false,
     cwd = process.cwd()
@@ -167,6 +202,7 @@ export async function generateTag(options = {}) {
     message,
     dryRun,
     push,
+    sync,
     remote,
     allowDirty,
     cwd
@@ -206,7 +242,9 @@ export async function generateTag(options = {}) {
     created: Boolean(metadata.created),
     pushed: Boolean(metadata.pushed),
     message: tagMessage,
-    commits: metadata.commits || []
+    commits: metadata.commits || [],
+    manifests: metadata.manifests || [],
+    manifestCommit: metadata.manifestCommit || null
   };
 }
 

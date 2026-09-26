@@ -129,3 +129,27 @@ export function createTag(tagName, message, cwd = process.cwd()) {
 export function pushTag(tagName, remote = 'origin', cwd = process.cwd()) {
   runGit(['push', remote, tagName], cwd);
 }
+
+/**
+ * Stage and commit specific files.
+ * @param {string[]} files
+ * @param {string} message
+ * @param {string} [cwd=process.cwd()]
+ */
+export function commitFiles(files, message, cwd = process.cwd()) {
+  if (!files || files.length === 0) return;
+  runGit(['add', ...files], cwd);
+  runGit(['commit', '-m', message], cwd);
+}
+
+/**
+ * Push current branch to remote repository.
+ * @param {string} branch
+ * @param {string} [remote='origin']
+ * @param {string} [cwd=process.cwd()]
+ */
+export function pushBranch(branch, remote = 'origin', cwd = process.cwd()) {
+  if (!branch) return;
+  runGit(['push', remote, branch], cwd);
+}
+

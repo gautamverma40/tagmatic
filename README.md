@@ -49,6 +49,9 @@ tagmatic --dry-run
 # Create and push to remote origin
 tagmatic --type minor --push
 
+# Create, commit updated manifest (e.g. package.json), tag, and push
+tagmatic --type minor --sync --push
+
 # Custom tag annotation message
 tagmatic --type patch --message "Release v1.0.2: Bug fixes in parser"
 
@@ -57,6 +60,41 @@ tagmatic --prefix "release-"
 
 # Without prefix (e.g. 1.0.0)
 tagmatic --no-prefix
+```
+
+### Multi-Ecosystem Manifest Synchronization (`--sync`)
+
+When `--sync` is enabled, Tagmatic automatically detects and updates the version string in your project's manifest files, stages the changes, creates a release commit (`chore(release): <tag>`), and tags that release commit:
+
+| Ecosystem | Manifest File | How Tagmatic Handles It |
+|---|---|---|
+| **Node.js** | `package.json` | Updates `"version"` (and `package-lock.json` if present), preserving indentation and newlines |
+| **Java (Maven)** | `pom.xml` | Updates project `<version>` under `<artifactId>`, preserving XML structure |
+| **Java / Kotlin (Gradle)** | `gradle.properties`, `build.gradle`, `build.gradle.kts` | Updates `version = "..."` |
+| **Python** | `pyproject.toml` | Updates `version = "..."` under `[project]` (PEP 621) or `[tool.poetry]` |
+| **Rust** | `Cargo.toml` | Updates `version = "..."` under `[package]` |
+| **PHP** | `composer.json` | Updates `"version"` if explicitly defined in the file |
+| **Deno** | `deno.json` | Updates `"version"` if explicitly defined in the file |
+| **Go** | `go.mod` | Go modules store versions exclusively via Git tags; no file modification needed |
+
+#### Polyglot Repositories & Selective Targeting
+If a repository contains multiple manifests (e.g. a Node CLI + Rust backend or full-stack Python + JS app):
+- **Sync all manifests** *(default)*:
+  ```bash
+  tagmatic --type minor --sync --push
+  ```
+- **Sync a specific manifest only** (by ecosystem type or file name):
+  ```bash
+  tagmatic --type minor --sync=npm --push
+  tagmatic --type minor --sync=pom.xml --push
+  ```
+
+```bash
+# Preview manifest changes without modifying disk
+tagmatic --type minor --sync --dry-run
+
+# Update manifest, commit, tag, and push in one command
+tagmatic --type minor --sync --push
 ```
 
 ### Google Artifact Registry (GAR) Tagging
@@ -86,6 +124,7 @@ docker push us-east4-docker.pkg.dev/my-project/my-repo/my-service:$NEXT_TAG
 | `--type` | `-t` | Version bump type (`patch`, `minor`, `major`) | `patch` |
 | `--prefix` | `-p` | Tag prefix string | `v` |
 | `--no-prefix` | | Omit tag prefix (equivalent to `--prefix ""`) | `false` |
+| `--sync [target]` | | Sync version into manifest files (all, or target: `npm`, `maven`, `gradle`, `python`, etc.) and commit before tagging | `false` |
 | `--message` | `-m` | Custom annotation message for tag | `Release <tag>` |
 | `--quiet` | `-q` | Print only computed tag string (ideal for CI/CD) | `false` |
 | `--dry-run` | `-d` | Preview calculation without creating tag | `false` |
