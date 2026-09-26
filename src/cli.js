@@ -125,9 +125,9 @@ export function parseArgs(argv = []) {
     } else if (arg.startsWith('--limit=')) {
       options.limit = parseInt(arg.slice(arg.indexOf('=') + 1), 10) || 25;
     } else if (arg === '-t' || arg === '--type') {
-      if (i + 1 < argv.length) options.type = argv[++i];
+      if (i + 1 < argv.length) options.type = argv[++i].toLowerCase();
     } else if (arg.startsWith('--type=')) {
-      options.type = arg.slice(arg.indexOf('=') + 1);
+      options.type = arg.slice(arg.indexOf('=') + 1).toLowerCase();
     } else if (arg === '-p' || arg === '--prefix') {
       if (i + 1 < argv.length) options.prefix = argv[++i];
     } else if (arg.startsWith('--prefix=')) {
@@ -146,7 +146,10 @@ export function parseArgs(argv = []) {
     } else if (arg.startsWith('--initial=')) {
       options.initialVersion = arg.slice(arg.indexOf('=') + 1);
       initialExplicitlySet = true;
-    } else if (!arg.startsWith('-')) {
+    } else if (arg.startsWith('-')) {
+      // Unknown flag — warn the user
+      console.warn(`⚠️  Unknown option: "${arg}"`);
+    } else {
       // Positional argument support (<image> [type])
       if (!options.image && (arg.includes('/') || arg.includes('.'))) {
         options.image = arg;
