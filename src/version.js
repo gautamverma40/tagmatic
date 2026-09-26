@@ -156,6 +156,27 @@ export function sortVersions(versions, direction = 'desc') {
 }
 
 /**
+ * Filter an array of tag strings to only those matching semver with an optional prefix.
+ * @param {string[]} tags - array of tag strings
+ * @param {string} [prefix] - expected prefix to match (e.g. 'v', 'release-', '' for unprefixed)
+ * @returns {string[]}
+ */
+export function filterSemverTags(tags, prefix) {
+  return tags.filter(tag => {
+    const expectedPrefix = prefix !== undefined && prefix !== null ? prefix : undefined;
+    const parsed = parseSemver(tag, expectedPrefix);
+    if (!parsed) return false;
+    if (prefix !== undefined && prefix !== null) {
+      if (prefix.toLowerCase() === 'v') {
+        return parsed.prefix.toLowerCase() === 'v';
+      }
+      return parsed.prefix === prefix;
+    }
+    return true;
+  });
+}
+
+/**
  * Bump a semver version.
  * @param {string} versionStr - current version (e.g. "v1.2.3")
  * @param {'major' | 'minor' | 'patch'} type - bump type

@@ -6,7 +6,8 @@ import {
   formatTag,
   compareVersions,
   sortVersions,
-  bumpVersion
+  bumpVersion,
+  filterSemverTags
 } from '../src/version.js';
 
 describe('Version Utilities', () => {
@@ -198,6 +199,32 @@ describe('Version Utilities', () => {
 
     it('should throw on invalid version string', () => {
       assert.throws(() => bumpVersion('invalid', 'patch'), /Cannot bump invalid version/);
+    });
+  });
+
+  describe('filterSemverTags', () => {
+    it('should filter tags matching v prefix', () => {
+      const tags = ['v1.0.0', 'v2.0.0', 'latest', 'sha-abc', 'v1.5.0-beta.1'];
+      const filtered = filterSemverTags(tags, 'v');
+      assert.deepEqual(filtered, ['v1.0.0', 'v2.0.0', 'v1.5.0-beta.1']);
+    });
+
+    it('should filter tags matching custom prefix', () => {
+      const tags = ['release-1.0.0', 'v2.0.0', 'release-1.5.0'];
+      const filtered = filterSemverTags(tags, 'release-');
+      assert.deepEqual(filtered, ['release-1.0.0', 'release-1.5.0']);
+    });
+
+    it('should filter unprefixed tags when prefix is empty string', () => {
+      const tags = ['1.0.0', 'v2.0.0', '1.5.0', 'latest'];
+      const filtered = filterSemverTags(tags, '');
+      assert.deepEqual(filtered, ['1.0.0', '1.5.0']);
+    });
+
+    it('should return all semver tags when prefix is undefined', () => {
+      const tags = ['v1.0.0', '2.0.0', 'release-3.0.0', 'latest'];
+      const filtered = filterSemverTags(tags, undefined);
+      assert.deepEqual(filtered, ['v1.0.0', '2.0.0', 'release-3.0.0']);
     });
   });
 });

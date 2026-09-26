@@ -3,7 +3,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { parseSemver, sortVersions } from './version.js';
+import { filterSemverTags, sortVersions } from './version.js';
 
 /**
  * Check if gcloud CLI is available.
@@ -83,17 +83,7 @@ export function getLatestGARTag(imageName, prefix = 'v', limit = 25, fetchFn = f
   const tags = fetchFn(imageName, limit);
   if (!tags || tags.length === 0) return null;
 
-  const matchingTags = tags.filter(tag => {
-    const parsed = parseSemver(tag, prefix || undefined);
-    if (!parsed) return false;
-    if (prefix !== undefined && prefix !== null) {
-      if (prefix.toLowerCase() === 'v') {
-        return parsed.prefix.toLowerCase() === 'v';
-      }
-      return parsed.prefix === prefix;
-    }
-    return true;
-  });
+  const matchingTags = filterSemverTags(tags, prefix);
 
   if (matchingTags.length === 0) return null;
 

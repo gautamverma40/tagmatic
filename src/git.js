@@ -3,7 +3,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { parseSemver, sortVersions } from './version.js';
+import { filterSemverTags, sortVersions } from './version.js';
 
 /**
  * Execute a git command with argument array and return its trimmed stdout.
@@ -78,23 +78,13 @@ export function getAllTags(cwd = process.cwd()) {
 
 /**
  * Get the latest semver tag in the repository.
- * @param {string} [prefix='v']
+ * @param {string} prefix - tag prefix to match (e.g. 'v', 'release-', '')
  * @param {string} [cwd=process.cwd()]
  * @returns {string|null}
  */
-export function getLatestTag(prefix = 'v', cwd = process.cwd()) {
+export function getLatestTag(prefix, cwd = process.cwd()) {
   const tags = getAllTags(cwd);
-  const matchingTags = tags.filter(tag => {
-    const parsed = parseSemver(tag, prefix || undefined);
-    if (!parsed) return false;
-    if (prefix !== undefined && prefix !== null) {
-      if (prefix.toLowerCase() === 'v') {
-        return parsed.prefix.toLowerCase() === 'v';
-      }
-      return parsed.prefix === prefix;
-    }
-    return true;
-  });
+  const matchingTags = filterSemverTags(tags, prefix);
 
   if (matchingTags.length === 0) return null;
 
