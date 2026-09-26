@@ -198,7 +198,7 @@ export async function runCLI(argv = process.argv.slice(2)) {
       console.log(`📦 Image:        ${result.image}`);
       console.log(`🔍 Current Tag:  ${result.currentTag || '(none)'}`);
       console.log(`✨ Next Tag:     ${result.nextTag} [${options.type.toUpperCase()}]`);
-      if (result.isDryRun) {
+      if (result.dryRun) {
         console.log('\n⚠️  DRY RUN: Tag calculated.');
       }
       console.log('----------------------------------------\n');
@@ -213,7 +213,7 @@ export async function runCLI(argv = process.argv.slice(2)) {
     console.log(`✨ Next Tag:     ${result.nextTag} [${options.type.toUpperCase()}]`);
     console.log(`💬 Message:      ${result.message}`);
 
-    if (result.isDryRun) {
+    if (result.dryRun) {
       console.log('\n⚠️  DRY RUN: Tag was calculated but NOT created or pushed.');
     } else {
       if (result.created) {

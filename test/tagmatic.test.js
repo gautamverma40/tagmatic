@@ -121,7 +121,7 @@ describe('End-to-End generateTag Integration', () => {
       const res = await generateTag({ cwd: repo, dryRun: true });
       assert.equal(res.currentTag, null);
       assert.equal(res.nextTag, 'v0.1.0');
-      assert.equal(res.isDryRun, true);
+      assert.equal(res.dryRun, true);
       assert.equal(res.created, false);
       assert.ok(res.commits.length > 0);
     } finally {

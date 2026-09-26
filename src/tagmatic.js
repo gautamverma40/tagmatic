@@ -29,24 +29,6 @@ import { bumpVersion, formatTag, isValidVersion } from './version.js';
  * @property {boolean} [allowDirty=false] - Allow tag generation even if git tree has changes
  * @property {string} [cwd=process.cwd()] - Target directory
  */
-
-/**
- * Generate and calculate next semver tag for Git or Google Artifact Registry.
- * @param {TagmaticOptions} [options={}]
- * @returns {Promise<{
- *   source: string,
- *   image?: string,
- *   currentTag: string|null,
- *   nextTag: string,
- *   branch: string|null,
- *   isDryRun: boolean,
- *   dryRun: boolean,
- *   created: boolean,
- *   pushed: boolean,
- *   message: string,
- *   commits: string[]
- * }>}
- */
 /**
  * Built-in source providers
  */
@@ -142,7 +124,6 @@ export function getRegisteredProviders() {
  *   currentTag: string|null,
  *   nextTag: string,
  *   branch: string|null,
- *   isDryRun: boolean,
  *   dryRun: boolean,
  *   created: boolean,
  *   pushed: boolean,
@@ -221,7 +202,6 @@ export async function generateTag(options = {}) {
     currentTag,
     nextTag,
     branch: metadata.branch ?? null,
-    isDryRun: Boolean(dryRun),
     dryRun: Boolean(dryRun),
     created: Boolean(metadata.created),
     pushed: Boolean(metadata.pushed),
