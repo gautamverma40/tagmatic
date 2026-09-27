@@ -8,7 +8,7 @@
   },
   "type": "module",
   "bin": {
-    "tagmatic": "./bin/tagmatic.js"
+    "tagmatic": "bin/tagmatic.js"
   },
   "files": [
     "bin",
